@@ -1,0 +1,42 @@
+config:
+  target: "https://api.ipstack.com"
+  phases:
+    - name: "Test obciążeniowy"
+      duration: 60         
+      arrivalRate: 2        
+  payload:
+    path: "./payload.csv"
+    fields:
+      - "ip"
+  variables:
+    access_key: "4a571a06de8db0c2587a1b3e466d0872"
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Test wydajnościowy"
+    flow:
+   
+      - get:
+          url: "/{{ ip }}?access_key={{ access_key }}"
+          capture:
+            - json: "$.country_name"
+              as: "country"
+
+      - post:
+          url: "/check?access_key={{ access_key }}"
+          json:
+            ips:
+              - "{{ ip }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "location"
+
+      - think: 2
+
+ensure:
+  thresholds:
+    - "http.response_time.p95": [ "<", 800 ]
+    - "http.response_time.max": [ "<", 2000 ]
+    - "http.requests.completed": [ ">", 10 ]
